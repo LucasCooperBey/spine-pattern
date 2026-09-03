@@ -1,23 +1,24 @@
 ---
 name: spine-pattern
-description: Apply THE SPINE PATTERN when building or designing ANY memory, knowledge base, RAG, agent-memory, or "make X searchable" system. The pattern - a typed, append-only, provenance-rich JSON node SPINE is the durable source of truth; a vector DB (Qdrant/pgvector) INDEXES it for retrieval but NEVER replaces it. Use when the user says "build a knowledge base", "agent memory", "RAG", "vector DB", "Qdrant", "embed/index this", "make it searchable", "memory layer", "knowledge graph", "ingest into a vector store", "how should this remember", or is about to dump data straight into a vector DB. Prevents the anti-pattern of making the vector DB the memory.
+description: >-
+  Apply THE SPINE PATTERN when building or designing ANY memory, knowledge base, RAG, agent-memory, or "make X searchable" system. The pattern: a typed, append-only, provenance-rich JSON node SPINE is the durable source of truth. A vector DB (Qdrant/pgvector) INDEXES it for retrieval but NEVER replaces it. Use when the user says "build a knowledge base", "agent memory", "RAG", "vector DB", "Qdrant", "embed/index this", "make it searchable", "memory layer", "knowledge graph", "ingest into a vector store", "how should this remember", or is about to dump data straight into a vector DB. Prevents the anti-pattern of making the vector DB the memory. Reuses business-ops/_system/spine-core/. Canonical record: llm-wiki synthesis 2026-06-05-the-spine-pattern.
 ---
 
 # The Spine Pattern
 
-**STOP before dumping anything into a vector DB.** First decide what the typed **source of truth** is. The vector DB only indexes it.
+**STOP before dumping anything into a vector DB.** First decide what the typed **source of truth** is, since the vector DB only indexes it.
 
 ## One line
-A typed, append-only, provenance-rich JSON node *spine* is the durable source of truth; a vector DB *indexes* it for retrieval but never replaces it.
+A typed, append-only, provenance-rich JSON node *spine* is the durable source of truth. A vector DB *indexes* it for retrieval but never replaces it.
 
 ## The failure this prevents
 Making the vector DB the memory → no replay, no audit, no supersede of stale facts, no metadata filtering, and "what do we know about X" returns fuzzy chunks instead of typed facts with provenance.
 
 ## The 13 principles (enforce these)
 1. The log is truth; the index is disposable (rebuild it from the log anytime).
-2. **Append-only — supersede, never overwrite** (new node + `SUPERSEDES` edge). The staleness fix.
+2. **Append-only: supersede, never overwrite** (new node + `SUPERSEDES` edge). The staleness fix.
 3. Provenance on every derived value (`value + derivation + evidence + confidence + target`). No naked numbers.
-4. Every judgment is a `DecisionTrace`/`ReviewAction` node, not an invisible note.
+4. Every judgment is a `DecisionTrace`/`ReviewAction` node rather than an invisible note.
 5. One shared envelope for all node types.
 6. Model memory after the business domain, not a generic schema.
 7. Typed edges from a closed vocabulary, stored as append-only nodes.
@@ -26,10 +27,10 @@ Making the vector DB the memory → no replay, no audit, no supersede of stale f
 10. Only durable decisions graduate to the wiki.
 11. Two memories, one envelope: Layer A project-KB (snapshot) + Layer B runtime spine (append-only), linked by `TRACES`.
 12. Mark uncertainty machine-readable (`status:hypothesis`, `confidence`, `needs_review`).
-13. Don't over-build the graph (defer Neo4j / multi-tenant infrastructure until a gate demands).
+13. Don't over-build the graph (defer Neo4j / Postgres tenancy / per-customer buckets until a gate demands).
 
 ## How to apply (import, don't rebuild)
-Use the reference library (`lib/spine_core.py`):
+Use the shared library at `business-ops/_system/spine-core/`:
 ```python
 from spine_core import Spine
 sp = Spine("path/to/project/spine")
@@ -46,8 +47,10 @@ uv run --with qdrant-client --with requests python spine_index.py search <collec
 1. Envelope · 2. Provenance wrapper · 3. Append + supersede · 4. Typed edges · 5. Indexer hook (`text_repr`) · 6. Retrieval filters (metadata-first, bounded K).
 
 ## Substrate
-Reference engine uses Qdrant + `nomic-embed-text` (768d) via Ollama. Any vector store (pgvector, etc.) also counts as the index — it's disposable and rebuildable from the spine.
+Qdrant: personal `127.0.0.1:6333` (keyless) / business+customer `127.0.0.1:6433` (keyed). Embedder: `nomic-embed-text` (768d) via Ollama. (pgvector/Voyage also count as the index, FutureTree.)
 
 ## References
-- Reference engine: `lib/spine_core.py` (the spine) + `lib/spine_index.py` (the index).
-- Full pattern writeup, principles, and provenance: `README.md`.
+- Reference instance (proven): `products/quarterback/source-docs/spine/` + `kb/`.
+- Library + README + adoption map: `business-ops/_system/spine-core/`.
+- Canonical record + adoption matrix + rollout order: LLM wiki `synthesis/2026-06-05-the-spine-pattern.md` (query via wiki-query).
+- When adopting into an existing system, read its adoption card in `_system/spine-core/PROMOTION-SYNTHESIS.md` first.
