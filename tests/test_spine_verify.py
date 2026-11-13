@@ -195,6 +195,28 @@ class VerifyTests(unittest.TestCase):
         self.assertEqual(rec["chained"], 4)
         self.assertEqual(rec["tail_incomplete"], 0)
 
+    def _insert_after_line_two(self, junk: bytes):
+        with open(self._nodes(), "rb") as handle:
+            lines = handle.readlines()
+        with open(self._nodes(), "wb") as handle:
+            handle.writelines(lines[:2] + [junk] + lines[2:])
+
+    def test_undecodable_line_blames_only_itself(self):
+        # source: review of daf4d88 (2026-11-12): the UTF-8 branch had no test.
+        self._append_three()
+        self._insert_after_line_two(b"\xff\xfe not utf-8\n")
+        rec = spine_verify.verify_file(self._nodes())
+        self.assertEqual(rec["broken_lines"], [3])
+        self.assertEqual(rec["chained"], 3)
+
+    def test_non_object_line_blames_only_itself(self):
+        # source: review of daf4d88 (2026-11-12): the non-object branch had no test.
+        self._append_three()
+        self._insert_after_line_two(b'["a", "list"]\n')
+        rec = spine_verify.verify_file(self._nodes())
+        self.assertEqual(rec["broken_lines"], [3])
+        self.assertEqual(rec["chained"], 3)
+
     def test_rewrite_from_scratch_keeps_alarming(self):
         # source: a file replaced by a fresh valid chain prints
         # ALARM: spine history rewritten, and the state file keeps the old head

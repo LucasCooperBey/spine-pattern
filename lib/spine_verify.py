@@ -112,34 +112,18 @@ def verify_file(path: str, prev_head: str | None = None) -> dict:
                 tail_incomplete = len(raw_line)
             try:
                 line = raw_line.decode("utf-8")
-            except UnicodeDecodeError:
-                if unterminated:
+                if not line.strip():
                     continue
-                # A line that is not a JSON object is broken where it stands.
-                # The chain resumes from the last row that parsed, so a torn
-                # write sealed by the next append does not blame that append.
-                broken += 1
-                broken_lines.append(line_no)
-                continue
-            if not line.strip():
-                continue
-            try:
                 obj = json.loads(line)
-            except json.JSONDecodeError:
-                if unterminated:
-                    continue
-                # A line that is not a JSON object is broken where it stands.
-                # The chain resumes from the last row that parsed, so a torn
-                # write sealed by the next append does not blame that append.
-                broken += 1
-                broken_lines.append(line_no)
-                continue
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                obj = None
             if not isinstance(obj, dict):
                 if unterminated:
                     continue
-                # A line that is not a JSON object is broken where it stands.
-                # The chain resumes from the last row that parsed, so a torn
-                # write sealed by the next append does not blame that append.
+                # Bad UTF-8, bad JSON, or JSON that is not an object: broken
+                # where it stands. The chain resumes from the last row that
+                # parsed, so a torn write sealed by the next append does not
+                # blame that append.
                 broken += 1
                 broken_lines.append(line_no)
                 continue
