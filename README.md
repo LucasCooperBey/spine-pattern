@@ -62,20 +62,48 @@ The default move ("dump everything into a vector DB and call it memory") quietly
 | `lib/spine_core.py` | the engine (`Spine(dir)`): envelope, append-only writers, typed edges, `supersede()`, `derived_value()`, `read/stats`, `text_repr` |
 | `lib/spine_index.py` | the retrieval half: index any spine into Qdrant (`nomic-embed-text` 768d via Ollama) + bounded, metadata-filtered `search()` |
 | `lib/spine_verify.py` | checks `nodes.jsonl` and `edges.jsonl` and reports chained, legacy, and broken rows |
-| `tests/` | unittest for the hash chain and the verifier |
+| `examples/` | `quickstart.py` (derived value, supersede, edge check) and `append_three.py` (the rows for the verify example below) |
+| `tests/` | unittest for the hash chain and the verifier (`python3 -m unittest discover -s tests`) |
 | `skill/SKILL.md` | the auto-invoking agent skill: fires whenever someone builds memory/RAG/"make X searchable" |
 
 ### Quick start (Python reference engine)
 
-```python
-from spine_core import Spine
-sp = Spine("path/to/project/spine")
-dv = sp.derived_value(1968, "sq_ft", "area_from_dimensions", "8x246",
-                      {"w": 8, "l": 246}, evidence, 0.95, "target_surface")
-sp.append("nodes", sp.envelope("DecisionTrace", "stable-id",
-                               payload={"derived": dv}, needs_review=True))
-sp.supersede(old_id, new_node)        # never edit in place
+You need Python 3.9 or newer. The engine and the verifier use only the standard library.
+
+```bash
+git clone https://github.com/LucasCooperBey/spine-pattern
+cd spine-pattern
+python3 examples/quickstart.py
+python3 -m unittest discover -s tests
 ```
+
+`examples/quickstart.py` records a derived number with the evidence behind it, then replaces it after a re-measure without editing the old row. Its core lines:
+
+```python
+sp = Spine("demo-spine")
+evidence = [sp.source_ref("plan-sheet-A2", "page 2, dimension 8x246")]
+dv = sp.derived_value(1968, "sq_ft", "area_from_dimensions", "8 ft x 246 ft",
+                      {"w": 8, "l": 246}, evidence, 0.95, "target_surface")
+old = sp.append("nodes", sp.envelope("DecisionTrace", "wall-area",
+                                     payload={"derived": dv}, needs_review=True))
+dv2 = sp.derived_value(2000, "sq_ft", "area_from_dimensions", "8 ft x 250 ft after a re-measure",
+                       {"w": 8, "l": 250}, evidence, 0.9, "target_surface")
+new_node = sp.envelope("DecisionTrace", "wall-area-v2", payload={"derived": dv2}, needs_review=True)
+sp.supersede(old["id"], new_node)  # never edit in place
+```
+
+It prints both nodes, the `SUPERSEDES` edge between them, and the refusal of an edge type outside the allowed set:
+
+```
+node node:decisiontrace:wall-area 1968
+node node:decisiontrace:wall-area-v2 2000
+edge SUPERSEDES node:decisiontrace:wall-area-v2 -> node:decisiontrace:wall-area
+refused: unknown edge rel 'REPLACES'; allowed ['BELONGS_TO_PROJECT', 'DECIDED_BY', 'DERIVED_FROM', 'EVALUATES', 'FLAGS_GAP', 'REFERENCES', 'REVIEWED_BY', 'SUPERSEDES', 'TRACES']
+```
+
+It writes to `./demo-spine`; delete that folder to start over. To use the engine in your own code, copy `lib/spine_core.py` into your project (or run with `PYTHONPATH=lib`) and `from spine_core import Spine`.
+
+The retrieval half needs a running Qdrant and Ollama with the `nomic-embed-text` model:
 
 ```bash
 uv run --with qdrant-client --with requests python lib/spine_index.py index <spine_dir> <collection>
@@ -100,7 +128,7 @@ python3 lib/spine_verify.py path/to/spine
 
 ### Example
 
-Three nodes were appended to a new `spine` directory (`payload.text` values `alpha`, `SECOND`, and `gamma`). The first verify printed:
+`python3 examples/append_three.py spine` appends three nodes to a new `spine` directory (`payload.text` values `alpha`, `SECOND`, and `gamma`). Then `python3 lib/spine_verify.py spine` printed:
 
 ```
 spine/nodes.jsonl: chained=3 legacy=0 broken=0
