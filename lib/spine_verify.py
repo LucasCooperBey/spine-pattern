@@ -115,7 +115,9 @@ def verify_file(path: str, prev_head: str | None = None) -> dict:
                 if not line.strip():
                     continue
                 obj = json.loads(line)
-            except (UnicodeDecodeError, json.JSONDecodeError):
+            except (ValueError, RecursionError):
+                # ValueError covers bad UTF-8, bad JSON and over-long integers;
+                # RecursionError covers a line nested too deep to parse.
                 obj = None
             if not isinstance(obj, dict):
                 if unterminated:

@@ -217,6 +217,23 @@ class VerifyTests(unittest.TestCase):
         self.assertEqual(rec["broken_lines"], [3])
         self.assertEqual(rec["chained"], 3)
 
+    def test_deeply_nested_line_blames_only_itself(self):
+        # source: review-gate on a083fd4 (2026-11-12): RecursionError from a
+        # deeply nested line aborted the whole run instead of naming the line.
+        self._append_three()
+        self._insert_after_line_two(b"[" * 200000 + b"\n")
+        rec = spine_verify.verify_file(self._nodes())
+        self.assertEqual(rec["broken_lines"], [3])
+        self.assertEqual(rec["chained"], 3)
+
+    def test_blank_line_is_skipped(self):
+        # source: review-gate on a083fd4 (2026-11-12): the blank-line skip had no test.
+        self._append_three()
+        self._insert_after_line_two(b"\n")
+        rec = spine_verify.verify_file(self._nodes())
+        self.assertEqual(rec["broken_lines"], [])
+        self.assertEqual(rec["chained"], 3)
+
     def test_rewrite_from_scratch_keeps_alarming(self):
         # source: a file replaced by a fresh valid chain prints
         # ALARM: spine history rewritten, and the state file keeps the old head
