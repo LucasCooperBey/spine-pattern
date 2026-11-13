@@ -101,7 +101,7 @@ edge SUPERSEDES node:decisiontrace:wall-area-v2 -> node:decisiontrace:wall-area
 refused: unknown edge rel 'REPLACES'; allowed ['BELONGS_TO_PROJECT', 'DECIDED_BY', 'DERIVED_FROM', 'EVALUATES', 'FLAGS_GAP', 'REFERENCES', 'REVIEWED_BY', 'SUPERSEDES', 'TRACES']
 ```
 
-It writes to `./demo-spine`; delete that folder to start over. To use the engine in your own code, copy `lib/spine_core.py` into your project (or run with `PYTHONPATH=lib`) and `from spine_core import Spine`.
+It writes to `./demo-spine`. A spine is append-only, so the script stops when that folder already has rows; delete the folder to run it again. To use the engine in your own code, copy `lib/spine_core.py` into your project (or run with `PYTHONPATH=lib`) and `from spine_core import Spine`.
 
 The retrieval half needs a running Qdrant and Ollama with the `nomic-embed-text` model:
 

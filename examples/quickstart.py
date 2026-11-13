@@ -1,7 +1,8 @@
 """Quick start: record a derived value with its evidence, then replace it without editing in place.
 
 Run from the repo root:  python3 examples/quickstart.py
-It writes to ./demo-spine (delete that folder to start over).
+It writes to ./demo-spine. A spine is append-only, so a second run would add the same rows
+again; the script stops instead and says to delete the folder.
 """
 import sys
 from pathlib import Path
@@ -10,7 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from spine_core import Spine  # noqa: E402
 
-sp = Spine("demo-spine")
+TARGET = Path("demo-spine")
+if (TARGET / "nodes.jsonl").exists():
+    sys.exit("demo-spine already has rows. Delete the folder to run the demo again.")
+
+sp = Spine(str(TARGET))
 
 # Every derived number carries how it was derived and the evidence behind it.
 evidence = [sp.source_ref("plan-sheet-A2", "page 2, dimension 8x246")]
