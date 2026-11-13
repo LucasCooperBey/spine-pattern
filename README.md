@@ -124,7 +124,9 @@ spine-verify: state=could_not files=1 chained=1 legacy=0 broken=2
 
 Line 2 is broken because its stored `row_hash` no longer matches its bytes. Line 3 is reported too, because the verifier links each row to the digest it recomputes for the row before it, and line 3 still names the original second row. Any broken row or alarm makes the summary read `state=could_not` and the exit code 1.
 
-The chain proves in-file tamper evidence and ordering. A changed byte, a dropped row, a swapped pair, or a relinked row fails the check. It does not prove when a row was written. There is no external timestamp authority, so a whole file rewritten from scratch with fresh hashes passes the chain check. That rewrite is caught only by the state file's remembered head.
+The chain proves in-file tamper evidence and ordering. A changed byte, a dropped row, a swapped pair, or a relinked row fails the check. It does not prove when a row was written. There is no external timestamp authority, so a whole file rewritten from scratch with fresh hashes passes the chain check. That rewrite is caught only by the state file's remembered head, so keep the state file where the process that writes the spine cannot write (`--state PATH` or `SPINE_VERIFY_STATE`). The hashes carry no key, so a writer that can rewrite both the ledger and the state file can produce a history that passes.
+
+A crash in the middle of a write leaves a torn last line, which the verifier reports as `tail_incomplete` without counting it broken. The next append ends that line with a newline and links to the last complete row, so from then on the torn line reads broken and the rows after it still chain.
 
 ---
 

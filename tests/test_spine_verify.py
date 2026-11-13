@@ -181,6 +181,20 @@ class VerifyTests(unittest.TestCase):
         self.assertIn("broken=0", second.stdout.strip().splitlines()[-1])
         self.assertIn("state=could_not", second.stdout.strip().splitlines()[-1])
 
+    def test_torn_line_sealed_by_next_append_blames_only_itself(self):
+        # source: review of the first public push (2026-11-12). A crash leaves a
+        # torn tail; the next append adds a newline and links to the last
+        # complete row, so only the torn line is broken.
+        sp, rows = self._append_three()
+        with open(self._nodes(), "ab") as handle:
+            handle.write(b'{"torn": tr')
+        fourth = sp.append("nodes", {"id": "n4", "payload": {"text": "delta"}})
+        self.assertEqual(fourth["prev_row_hash"], rows[2]["row_hash"])
+        rec = spine_verify.verify_file(self._nodes())
+        self.assertEqual(rec["broken_lines"], [4])
+        self.assertEqual(rec["chained"], 4)
+        self.assertEqual(rec["tail_incomplete"], 0)
+
     def test_rewrite_from_scratch_keeps_alarming(self):
         # source: a file replaced by a fresh valid chain prints
         # ALARM: spine history rewritten, and the state file keeps the old head

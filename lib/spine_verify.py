@@ -115,10 +115,11 @@ def verify_file(path: str, prev_head: str | None = None) -> dict:
             except UnicodeDecodeError:
                 if unterminated:
                     continue
+                # A line that is not a JSON object is broken where it stands.
+                # The chain resumes from the last row that parsed, so a torn
+                # write sealed by the next append does not blame that append.
                 broken += 1
                 broken_lines.append(line_no)
-                pred_state = "legacy"
-                pred_hash = None
                 continue
             if not line.strip():
                 continue
@@ -127,18 +128,20 @@ def verify_file(path: str, prev_head: str | None = None) -> dict:
             except json.JSONDecodeError:
                 if unterminated:
                     continue
+                # A line that is not a JSON object is broken where it stands.
+                # The chain resumes from the last row that parsed, so a torn
+                # write sealed by the next append does not blame that append.
                 broken += 1
                 broken_lines.append(line_no)
-                pred_state = "legacy"
-                pred_hash = None
                 continue
             if not isinstance(obj, dict):
                 if unterminated:
                     continue
+                # A line that is not a JSON object is broken where it stands.
+                # The chain resumes from the last row that parsed, so a torn
+                # write sealed by the next append does not blame that append.
                 broken += 1
                 broken_lines.append(line_no)
-                pred_state = "legacy"
-                pred_hash = None
                 continue
 
             got_hash, got_prev = spine_core.chain_stamp(obj)
